@@ -1,0 +1,80 @@
+################ readme ###################
+membuat folder menjadi repository
+git init atau klik kanan foldernya => git here
+
+1 git add index.php (add 1 file)
+2 git commit -m "add index.php" (selalu lakukan commit setelah melakukan perubahan)
+3 git status
+4 git add . (add all file)
+5 git status
+6 git commit -m "comment"
+7 git add (namafolder) (add folder)
+8 git status
+9 git commit -m "comment"
+10 git log (melihat commit apa saja yg pernah dilakukan)
+11 git log -3 (3 commit terakhir)
+12 git log (--namafile) (mencari sebuah perubahan apa saja yang pernah dilakukan di file tsb)
+13 ingin mengembalikan file yang sudah dihapus
+	git log (--namafile)
+	git checkout (5 digit pertama dari hashnya, kemudian --namafilenya)
+14 bila statusnya modify (file sudah ada, namun melakukan perubahan pada file tsb, 
+	bisa menggunakan perintah 
+		git add -> git commit atau bisa juga
+		git commit -am "comment"
+###membuat file namun belum yakin dengan yang dibuat
+15 git branch
+16 git branch (nama_branch) 
+17 git log --all --decorate --oneline --graph
+18 membuat alias => alias graph="git log --all --decorate --oneline --graph" = kemudian ketik graph
+19 pindah ke branch
+	git checkout dosen
+	cth :
+	misal kita punya branch
+		dosen
+		* master (ini defaultnya)
+		staff
+	kemudian ketikan perintah => git checkout dosen, maka
+		* dosen
+		master
+		staff
+	kemudian setiap kali menambahkan file akan ke branch dosen,
+	kemudian ketik graph yg sudah di alias
+######### memasukkan file dosen dan staff atau merge
+20 fast forward
+	git merge dosen
+21 menghapus branch
+	git brach --merged
+	git branch -d (namabranch) dengan kondisi branch sdh di merged
+	git branch -D (namabranch) kondisi tanpa di merged
+22 three-way merge
+	git merge staff (kalo masuk ke vim => esc :wq!)
+	
+23 git pull origin master --allow-unrelated-histories 
+24 git push -u origin master
+25 alias graph="git log --all --decorate --oneline --graph"
+26 git config --list
+27 exit => :q
+28 git config --global user.name "namausername"
+29 git config --global user.email "almtemail"
+
+
+upload file ke github dari local
+30 buat repository di folder local
+31 buka github.com -> klik add new repository  
+	-> namun kalimat Initialize this repository with a README biarkan uncheck
+	-> pilih or push an existing repository from the commandline
+	-> git remote add sms-dev https://github.com/mintathr/sms-repo-dev.git
+	->git push -u origin master
+
+32 git remote -v
+33 // delete branch locally
+	git branch -d localBranchName
+  // delete branch remotely
+	git push origin --delete remoteBranchName
+
+###################
+ ada pesan git warning: "LF will be replaced by CLRF"
+	abaikan saja itu hanya pengguna windows.
+	atau silahkan ketik perintah ini di git base = git config core.autocrlf true
+
+
