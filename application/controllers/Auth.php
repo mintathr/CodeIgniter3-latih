@@ -53,11 +53,11 @@ class Auth extends CI_Controller
                     }
                 } else {
                     $this->session->set_flashdata('message', '<div class="alert alert-danger alert-dismissible fade show" role="alert">
-            <strong>Failed!</strong> Wrong password!.
-            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-              <span aria-hidden="true">&times;</span>
-            </button>
-          </div>');
+                    <strong>Failed!</strong> Wrong password!.
+                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                    </button>
+                    </div>');
                     redirect('auth');
                 }
             } else {
@@ -103,19 +103,128 @@ class Auth extends CI_Controller
             $this->load->view('auth/registration');
             $this->load->view('templates/auth_footer');
         } else {
+            $email = $this->input->post('email', true);
             $data = [
                 'name'      => htmlspecialchars($this->input->post('name', true)),
-                'email'     => htmlspecialchars($this->input->post('email', true)),
+                'email'     => htmlspecialchars($email),
                 'image'     => 'default.jpg',
                 'password'  => password_hash($this->input->post('password1'), PASSWORD_DEFAULT),
                 'role_id' => 2,
-                'is_active' => 1,
+                'is_active' => 0,
                 'date_created' => time()
             ];
 
+            //token activated bilangan randonm 
+            $token = base64_encode(random_bytes(64)); //64 merupakan panjang string
+            $cek_token = [
+                'email'         => $email,
+                'token'         => $token,
+                'date_created'  => time()
+            ];
+
             $this->db->insert('ci_users', $data);
+            $this->db->insert('ci_users_token', $cek_token);
+
+            //send email to activated registration
+            $this->_sendEmail($token, 'verify');
+
+
             $this->session->set_flashdata('message', '<div class="alert alert-success alert-dismissible fade show" role="alert">
             <strong>Congratulation!</strong> Your Account has been Created. Please Activated.
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>');
+            redirect('auth');
+        }
+    }
+
+    private function _sendEmail($token, $type)
+    {
+        $config = [
+            'protocol'  => 'smtp',
+            'smtp_host' => 'ssl://smtp.googlemail.com',
+            'smtp_user' => 'wlysilitonga9@gmail.com',
+            'smtp_pass' => 'P@ssw012d,2010',
+            'smtp_port' => 465,
+            'mailtype'  => 'html',
+            'charset'   => 'utf-8',
+            'newline'   => "\r\n"
+        ];
+
+        $this->load->library('email', $config);
+        $this->email->initialize($config);
+
+        $this->email->from('wlysilitonga9@gmail.com', 'Support Me');
+        $this->email->to($this->input->post('email'));
+
+        if ($type == 'verify') {
+            $this->email->subject('Account Verification');
+            $this->email->message('Click this link to verify your account : <a href="' . base_url() . 'auth/verify?email=' . $this->input->post('email') . '&token=' . urlencode($token) . '">' . $token . '</a>');
+        } elseif ($type == 'forgot') {
+            $this->email->subject('Reset password');
+            $this->email->message('Click this link to reset your password : <a href="' . base_url() . 'auth/resetpassword?email=' . $this->input->post('email') . '&token=' . urlencode($token) . '">' . $token . '</a>');
+        }
+
+        if ($this->email->send()) {
+            return true;
+        } else {
+            echo $this->email->print_debugger();
+            die();
+        }
+    }
+
+    public function verify()
+    {
+        $email = $this->input->get('email');
+        $token = $this->input->get('token');
+
+        $cek_user = $this->db->get_where('ci_users', ['email' => $email])->row_array();
+
+        if ($cek_user) {
+            $cek_token = $this->db->get_where('ci_users_token', ['token' => $token])->row_array();
+            if ($cek_token) {
+                // bila lebih dari 24 jam
+                if (time() - $cek_token['date_created'] < (60 * 60 * 24)) {
+                    $this->db->set('is_active', 1);
+                    $this->db->where('email', $email);
+                    $this->db->update('ci_users');
+
+                    // delete user token
+                    $this->db->delete('ci_users_token', ['email' => $email]);
+
+                    $this->session->set_flashdata('message', '<div class="alert alert-success alert-dismissible fade show" role="alert">
+                    <strong>Success!</strong> ' . $email . ' has been activated!. Please Login.
+                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                    </button>
+                    </div>');
+                    redirect('auth');
+                } else {
+                    // deleted user
+                    $this->db->delete('ci_users', ['email' => $email]);
+                    $this->db->delete('ci_users_token', ['email' => $email]);
+
+                    $this->session->set_flashdata('message', '<div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <strong>Failed!</strong> Token Expired!.
+                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                    </button>
+                    </div>');
+                    redirect('auth');
+                }
+            } else {
+                $this->session->set_flashdata('message', '<div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <strong>Failed!</strong> Wrong token!.
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+                </button>
+                </div>');
+                redirect('auth');
+            }
+        } else {
+            $this->session->set_flashdata('message', '<div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <strong>Failed!</strong> Wrong email!.
             <button type="button" class="close" data-dismiss="alert" aria-label="Close">
               <span aria-hidden="true">&times;</span>
             </button>
@@ -141,5 +250,129 @@ class Auth extends CI_Controller
     public function blocked()
     {
         $this->load->view('auth/blocked');
+    }
+
+    public function forgotPassword()
+    {
+        $this->form_validation->set_rules('email', 'Email', 'trim|required|valid_email');
+
+        if ($this->form_validation->run() == false) {
+            $data['title'] = 'Forgot Password';
+            $this->load->view('templates/auth_header', $data);
+            $this->load->view('auth/forgot-password');
+            $this->load->view('templates/auth_footer');
+        } else {
+            $email = $this->input->post('email');
+            $cek_user = $this->db->get_where('ci_users', ['email' => $email, 'is_active' => 1])->row_array();
+
+            if ($cek_user) {
+                $token = base64_encode(random_bytes(64));
+                $user_token = [
+                    'email'         => $email,
+                    'token'         => $token,
+                    'date_created' => time()
+                ];
+
+                $this->db->insert('ci_users_token', $user_token);
+                $this->_sendEmail($token, 'forgot');
+                $this->session->set_flashdata('message', '<div class="alert alert-success alert-dismissible fade show" role="alert">
+                <strong>Success!</strong> Please check email to reset your password!.
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+                </button>
+                </div>');
+                redirect('auth/forgotpassword');
+            } else {
+                $this->session->set_flashdata('message', '<div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <strong>Failed!</strong> Email is not registered or activated!.
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+                </button>
+                </div>');
+                redirect('auth/forgotpassword');
+            }
+        }
+    }
+
+    public function resetPassword()
+    {
+        $email = $this->input->get('email');
+        $token = $this->input->get('token');
+
+        $cek_user = $this->db->get_where('ci_users', ['email' => $email])->row_array();
+
+        if ($cek_user) {
+            $cek_token = $this->db->get_where('ci_users_token', ['token => $token'])->row_array();
+
+            if ($cek_token) {
+                // bila lebih dari 24 jam
+                if (time() - $cek_token['date_created'] < (60 * 60 * 24)) {
+                    $this->session->set_userdata('reset_email', $email);
+                    $this->changePassword();
+                } else {
+                    // deleted user
+                    $this->db->delete('ci_users_token', ['email' => $email]);
+
+                    $this->session->set_flashdata('message', '<div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <strong>Failed!</strong> Token Expired!.
+                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                    </button>
+                    </div>');
+                    redirect('auth');
+                }
+            } else {
+                $this->session->set_flashdata('message', '<div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <strong>Failed!</strong> Wrong token!.
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+                </button>
+                </div>');
+                redirect('auth');
+            }
+        } else {
+            $this->session->set_flashdata('message', '<div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <strong>Failed!</strong> Reset password failed! Wrong email.
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+            </button>
+            </div>');
+            redirect('auth');
+        }
+    }
+
+    public function changePassword()
+    {
+        //ubah password tanpa lewat email atau lgsg akses changepassword langsung, 
+        if (!$this->session->userdata('reset_email')) {
+            redirect('auth');
+        }
+
+        $this->form_validation->set_rules('password1', 'Password', 'required|trim|min_length[8]|matches[password2]');
+        $this->form_validation->set_rules('password2', 'Repeat Password', 'required|trim|min_length[8]|matches[password1]');
+
+        if ($this->form_validation->run() == false) {
+            $data['title'] = 'Change Password';
+            $this->load->view('templates/auth_header', $data);
+            $this->load->view('auth/change-password');
+            $this->load->view('templates/auth_footer');
+        } else {
+            $password = password_hash($this->input->post('password1'), PASSWORD_DEFAULT);
+            $email = $this->session->userdata('reset_email'); //reset_email diambil session dari function reset password
+
+            $this->db->set('password', $password);
+            $this->db->where('email', $email);
+            $this->db->update('ci_users');
+
+            $this->session->unset_userdata('reset_email');
+
+            $this->session->set_flashdata('message', '<div class="alert alert-success alert-dismissible fade show" role="alert">
+            <strong>Success!</strong> Password has been changed!. Please login.
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+            </button>
+            </div>');
+            redirect('auth');
+        }
     }
 }
