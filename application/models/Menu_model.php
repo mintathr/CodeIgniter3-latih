@@ -12,4 +12,15 @@ class Menu_model extends CI_Model
                 ";
         return $this->db->query($cek_menu)->result_array();
     }
+
+    public function addDataMenu()
+    {
+        $this->db->insert('ci_users_menu', ['menu' => $this->input->post('menu', true)]); //fungsi true unutk membersihkan dari serangan sql injection fungsinya krg lbh sm dengan htmlspecialcharqacter
+    }
+
+    public function deleteDataMenu($id)
+    {
+        $this->db->where('id', $id);
+        $this->db->delete('ci_users_menu');
+    }
 }
